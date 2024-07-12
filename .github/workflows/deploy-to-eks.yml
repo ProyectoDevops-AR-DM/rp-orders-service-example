@@ -22,6 +22,55 @@ jobs:
       - name: Build with Maven
         run: mvn clean package
 
+  sonarcloud:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
+      - name: Build with Maven
+        run: mvn clean package
+
+      - name: Install SonarScanner
+        run: npm install -g sonar-scanner
+
+      - name: Run SonarCloud analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.java.binaries=target/classes
+
+  build_and_deploy_dockerhub:
+    runs-on: ubuntu-latest
+    needs: [sonarcloud, build]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
+      - name: Build with Maven
+        run: mvn clean package
+        
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
@@ -36,7 +85,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build  # Este trabajo se ejecutará solo si el trabajo de build tiene éxito
+    needs: build_and_deploy_dockerhub  # Este trabajo se ejecutará solo si el trabajo build_and_deploy_dockerhub tiene éxito
 
     steps:
       - name: Checkout code
@@ -70,6 +119,5 @@ jobs:
       - name: Test API Endpoint
         run: |
           sleep 30  # Espera unos segundos para que el servicio esté disponible
-          EXTERNAL_IP=$(kubectl get svc orders-service-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          curl http://a421b61ad11ad44c8b157f86e3e7f2a2-432921756.us-east-1.elb.amazonaws.com/orders
+          curl http://ac7818b2f097f452e8c81d41fbf83433-1411688256.us-east-1.elb.amazonaws.com/products
         # Reemplaza <EXTERNAL-IP> con la IP externa de tu servicio
