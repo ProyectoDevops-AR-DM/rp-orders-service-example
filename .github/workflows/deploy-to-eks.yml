@@ -4,11 +4,12 @@ on:
   push:
     branches:
       - main
+      - release
+      - develop
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -25,7 +26,6 @@ jobs:
   sonarcloud:
     runs-on: ubuntu-latest
     needs: build
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -57,7 +57,6 @@ jobs:
   build_and_deploy_dockerhub:
     runs-on: ubuntu-latest
     needs: [sonarcloud, build]
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -78,18 +77,31 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker image
-        run: docker build . -t ${{ secrets.DOCKER_USERNAME }}/orders-service-example:latest
+        run: |
+          if [[ ${{ github.ref_name }} == 'main' ]]; then
+            docker build . -t ${{ secrets.DOCKER_USERNAME }}/orders-service-example:latest
+          elif [[ ${{ github.ref_name }} == 'release' ]]; then
+            docker build . -t ${{ secrets.DOCKER_USERNAME }}/orders-service-example-release:latest
+          elif [[ ${{ github.ref_name }} == 'develop' ]]; then
+            docker build . -t ${{ secrets.DOCKER_USERNAME }}/orders-service-example-develop:latest
+          fi
 
       - name: Push Docker image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/orders-service-example:latest
+        run: |
+          if [[ ${{ github.ref_name }} == 'main' ]]; then
+            docker push ${{ secrets.DOCKER_USERNAME }}/orders-service-example:latest
+          elif [[ ${{ github.ref_name }} == 'release' ]]; then
+            docker push ${{ secrets.DOCKER_USERNAME }}/orders-service-example-release:latest
+          elif [[ ${{ github.ref_name }} == 'develop' ]]; then
+            docker push ${{ secrets.DOCKER_USERNAME }}/orders-service-example-develop:latest
+          fi
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build_and_deploy_dockerhub  # Este trabajo se ejecutará solo si el trabajo build_and_deploy_dockerhub tiene éxito
-
+    needs: build_and_deploy_dockerhub
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2  # Obtener el código del repositorio
+        uses: actions/checkout@v2
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v3
@@ -102,22 +114,42 @@ jobs:
       - name: Set up Kubernetes CLI
         uses: azure/setup-kubectl@v3
         with:
-          version: 'latest'  # Puedes especificar una versión en lugar de 'latest' para asegurar la compatibilidad futura
+          version: 'latest'
 
       - name: Configure kubectl
-        run: aws eks update-kubeconfig --name eks-proyectodevops --region ${{ secrets.AWS_REGION }}
-        # Actualiza el archivo kubeconfig con la configuración del cluster EKS
-
+        run: |
+          if [[ ${{ github.ref_name }} == 'main' ]]; then
+            aws eks update-kubeconfig --name eks-proyectodevops --region ${{ secrets.AWS_REGION }}
+          elif [[ ${{ github.ref_name }} == 'release' ]]; then
+            aws eks update-kubeconfig --name eks-proyectodevops-release --region ${{ secrets.AWS_REGION }}
+          elif [[ ${{ github.ref_name }} == 'develop' ]]; then
+            aws eks update-kubeconfig --name eks-proyectodevops-develop --region ${{ secrets.AWS_REGION }}
+          fi
       - name: Validate deployment YAML
         run: kubectl apply -f ./orders-service-deployment.yaml --dry-run=client
-        # Valida el archivo de despliegue antes de aplicarlo
 
       - name: Deploy to Kubernetes
         run: kubectl apply -f ./orders-service-deployment.yaml
-        # Aplica el archivo de despliegue a Kubernetes
-        
-      - name: Test API Endpoint
+
+      - name: Deploy Load Balancer Service
+        run: kubectl apply -f ./orders-service-svc.yaml
+
+      - name: Get Load Balancer URL
+        id: get_url
         run: |
-          sleep 30  # Espera unos segundos para que el servicio esté disponible
-          curl http://ac7818b2f097f452e8c81d41fbf83433-1411688256.us-east-1.elb.amazonaws.com/products
-        # Reemplaza <EXTERNAL-IP> con la IP externa de tu servicio
+          echo "Getting the Load Balancer URL..."
+          SERVICE_URL=$(kubectl get svc orders-service-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "SERVICE_URL=${SERVICE_URL}" >> $GITHUB_ENV
+   
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Newman
+        run: npm install -g newman
+
+  
+      - name: Run Newman tests
+        env:
+          SERVICE_URL: ${{ env.SERVICE_URL }}
+        run: |
+          newman run ./Postman/CollectionOrders.postman_collection.json --env-var linkService=${{ env.SERVICE_URL }}
