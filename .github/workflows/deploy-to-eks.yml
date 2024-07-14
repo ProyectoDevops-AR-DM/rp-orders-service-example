@@ -134,13 +134,13 @@ jobs:
           PAYMENTS_IP=$(kubectl get svc payments-service-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
           echo "APP_ARGS=http://${PAYMENTS_IP}:80 http://${PRODUCTS_IP}:80 http://${SHIPPING_IP}:80" >> $GITHUB_ENV
 
-      - name: Validate deployment YAML
+      - name: Validate deployment YAML AND Deploy to Kubernetes
         run: |
           APP_ARGS=${{ env.APP_ARGS }} envsubst < ./orders-service-deployment.yaml > ./orders-service-deployment-processed.yaml
           kubectl apply -f ./orders-service-deployment-processed.yaml --dry-run=client
-
-      - name: Deploy to Kubernetes
-        run: kubectl apply -f ./orders-service-deployment-processed.yaml
+          kubectl apply -f ./orders-service-deployment-processed.yaml
+    
+       
 
       - name: Deploy Load Balancer Service
         run: kubectl apply -f ./orders-service-svc.yaml
