@@ -109,11 +109,11 @@ jobs:
         # Actualiza el archivo kubeconfig con la configuración del cluster EKS
 
       - name: Validate deployment YAML
-        run: kubectl apply -f ./orders-service-deployment.yaml --dry-run=client
+        run: kubectl apply -f ./orders-service-deployment-release.yaml --dry-run=client
         # Valida el archivo de despliegue antes de aplicarlo
 
       - name: Deploy to Kubernetes
-        run: kubectl apply -f ./orders-service-deployment.yaml
+        run: kubectl apply -f ./orders-service-deployment-release.yaml
         # Aplica el archivo de despliegue a Kubernetes
         
       - name: Test API Endpoint
