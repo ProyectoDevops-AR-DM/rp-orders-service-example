@@ -25,5 +25,6 @@ spec:
             memory: "128Mi"
             cpu: "500m"
         env:
+       env:
         - name: APP_ARGS
-          value: "http://products-service-service:80 http://shipping-service-service:80"
+          value: "${APP_ARGS}"
