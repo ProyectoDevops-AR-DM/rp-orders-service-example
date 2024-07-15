@@ -26,4 +26,4 @@ spec:
             cpu: "500m"
         env:
         - name: APP_ARGS
-          value: "${APP_ARGS}"
+          value: ${APP_ARGS}
