@@ -24,6 +24,6 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "500m"
-        env:
+      env:
         - name: APP_ARGS
-          value: "${APP_ARGS}"
+          value: ${APP_ARGS}
