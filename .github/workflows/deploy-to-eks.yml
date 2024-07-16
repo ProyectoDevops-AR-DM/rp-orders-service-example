@@ -80,8 +80,6 @@ jobs:
         run: |
           if [[ ${{ github.ref_name }} == 'main' ]]; then
             docker build . -t ${{ secrets.DOCKER_USERNAME }}/orders-service-example:latest 
-            docker run -d --name orders-service-example --env "APP_ARGS=http://172.17.0.7:8080 http://172.17.0.6:8080 http://172.17.0.5:8080" orders-service-example:1
-
           elif [[ ${{ github.ref_name }} == 'release' ]]; then
             docker build . -t ${{ secrets.DOCKER_USERNAME }}/orders-service-example-release:latest
           elif [[ ${{ github.ref_name }} == 'develop' ]]; then
