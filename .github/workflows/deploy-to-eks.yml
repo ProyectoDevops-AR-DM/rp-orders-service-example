@@ -79,7 +79,7 @@ jobs:
       - name: Build Docker image
         run: |
           if [[ ${{ github.ref_name }} == 'main' ]]; then
-            docker build . -t ${{ secrets.DOCKER_USERNAME }}/orders-service-example:latest
+            docker build . -t ${{ secrets.DOCKER_USERNAME }}/orders-service-example:latest --env "APP_ARGS=http://a56d4e959e1494911be380dccaedcede-2139777263.us-east-1.elb.amazonaws.com http://a7aa69f920e044fb1af2ae642d73eb74-1945274340.us-east-1.elb.amazonaws.com http://a9f7f8e54204548aca34ac104f36ea17-1169486508.us-east-1.elb.amazonaws.com"
           elif [[ ${{ github.ref_name }} == 'release' ]]; then
             docker build . -t ${{ secrets.DOCKER_USERNAME }}/orders-service-example-release:latest
           elif [[ ${{ github.ref_name }} == 'develop' ]]; then
