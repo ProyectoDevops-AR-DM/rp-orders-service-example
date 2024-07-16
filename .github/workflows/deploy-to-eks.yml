@@ -132,7 +132,7 @@ jobs:
           PRODUCTS_IP=$(kubectl get svc products-service-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
           SHIPPING_IP=$(kubectl get svc shipping-service-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
           PAYMENTS_IP=$(kubectl get svc payments-service-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-          APP_ARGS="http://${PAYMENTS_IP}:80 http://${SHIPPING_IP}:80 http://${PRODUCTS_IP}:80"
+          APP_ARGS="http://${PAYMENTS_IP} http://${SHIPPING_IP} http://${PRODUCTS_IP}"
           echo "APP_ARGS="${APP_ARGS}"" >> $GITHUB_ENV
 
       - name: Validate deployment YAML
